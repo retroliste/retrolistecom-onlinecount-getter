@@ -17,4 +17,3 @@ retroliste.apiKey => Your API token (not the Verification token, you can find it
 
 retroliste.apiEndpoint => https://retroliste.com/v1/update/
 
-
