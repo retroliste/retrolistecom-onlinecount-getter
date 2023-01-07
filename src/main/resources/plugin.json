@@ -1,0 +1,5 @@
+{
+  "main" : "com.retroliste.plugin.main",
+  "name" : "Retroliste Onlinecount Fetcher",
+  "author" : "Niclas"
+}
