@@ -2,6 +2,7 @@ package com.retroliste.plugin;
 
 
 import com.eu.habbo.Emulator;
+import com.eu.habbo.habbohotel.commands.CommandHandler;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.plugin.EventHandler;
 import com.eu.habbo.plugin.EventListener;
@@ -18,6 +19,8 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 
 import java.net.URL;
+
+import com.retroliste.plugin.commands.SetMaintenanceCommand;
 import org.apache.http.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +50,8 @@ public class main extends HabboPlugin implements EventListener {
         Emulator.getConfig().register("retroliste.hotelId", "0");
         Emulator.getConfig().register("retroliste.apiEndpoint", "https://retroliste.com/v1/update/");
 
+        CommandHandler.addCommand(new SetMaintenanceCommand("cmd_rl_maintenance", Emulator.getTexts().getValue("rl.maintenance", "maintenance").split(";")));
+        CommandHandler.addCommand(new SetMaintenanceCommand("cmd_rl_apikey", Emulator.getTexts().getValue("rl.apikey", "apikey").split(";")));
 
 
         int onlinecount = Emulator.getGameEnvironment().getHabboManager().getOnlineCount();
@@ -97,12 +102,11 @@ public class main extends HabboPlugin implements EventListener {
         int onlinecount = Emulator.getGameEnvironment().getHabboManager().getOnlineCount();
         int activeRooms = Emulator.getGameEnvironment().getRoomManager().getActiveRooms().size();
         int upTime = Emulator.getIntUnixTimestamp() - Emulator.getTimeStarted();
-        String event = "{\"event\": \"onUserGoOffline\", \"onlinecount\": " + (onlinecount-1) + "," +
+        String event = "{\"event\": \"onUserGoOffline\", \"onlinecount\": " + (onlinecount - 1) + "," +
                 "\"activeRooms\": " + activeRooms + ", \"uptime\": " + upTime + "}";
 
         sendEventToRetroList(event);
     }
-
 
 
     public static void sendEventToRetroList(String e) {
@@ -111,26 +115,40 @@ public class main extends HabboPlugin implements EventListener {
         String hotelId = Emulator.getConfig().getValue("retroliste.hotelId", "0");
         String apiEndpoint = Emulator.getConfig().getValue("retroliste.apiEndpoint", "https://retroliste.com/v1/update/");
 
-        if(key.equals("null") || hotelId.equals("0"))
+        if (key.equals("null") || hotelId.equals("0"))
             return;
 
         Thread newThread = new Thread(() -> {
-
-
             try {
-             String answer = executePost(apiEndpoint + hotelId, e, key);
-             LOGGER.info(answer);
+                String answer = executePost(apiEndpoint + hotelId, e, key);
+                LOGGER.info(answer);
             } catch (Exception x) {
                 LOGGER.error(x.getMessage());
             }
-
         });
-
         newThread.start();
-
-
     }
 
+
+    public static boolean checkApiKey(String key, String hotelId, Habbo habbo) {
+
+
+        String apiEndpoint = Emulator.getConfig().getValue("retroliste.apiEndpoint", "https://retroliste.com/v1/update/");
+
+        if (key.equals("null") || hotelId.equals("0"))
+            return false;
+
+
+        try {
+            executePost(apiEndpoint + hotelId, "{\"event\": \"onCheckApiKey\"}", key);
+            return true;
+        } catch (Exception x) {
+            LOGGER.error(x.getMessage());
+            habbo.alert("API Key ungültig!\r\n" + x.getMessage());
+        }
+
+        return false;
+    }
 
     public static String executePost(String targetURL, String urlParameters, String key) {
         HttpURLConnection connection = null;
@@ -151,7 +169,7 @@ public class main extends HabboPlugin implements EventListener {
             connection.setDoOutput(true);
 
             //Send request
-            DataOutputStream wr = new DataOutputStream (
+            DataOutputStream wr = new DataOutputStream(
                     connection.getOutputStream());
             wr.writeBytes(urlParameters);
             wr.close();
