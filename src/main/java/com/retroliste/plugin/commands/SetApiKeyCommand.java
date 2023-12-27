@@ -30,7 +30,7 @@ public class SetApiKeyCommand extends Command implements EventListener {
         String currKey = Emulator.getConfig().getValue("retroliste.apiKey", "null");
 
         if (!currKey.equals("null")) {
-            gameClient.getHabbo().whisper("Der Key ist bereits gesetzt!", RoomChatMessageBubbles.ALERT);
+            gameClient.getHabbo().whisper("The key is already set!", RoomChatMessageBubbles.ALERT);
             return true;
         }
 
@@ -38,7 +38,7 @@ public class SetApiKeyCommand extends Command implements EventListener {
         String[] apikeyHotelid = strings[1].split("RETROLISTE");
 
         if (apikeyHotelid.length != 2) {
-            gameClient.getHabbo().whisper("Der Key ist ungültig!", RoomChatMessageBubbles.ALERT);
+            gameClient.getHabbo().whisper("The key is invalid!", RoomChatMessageBubbles.ALERT);
             return true;
         }
 
@@ -48,10 +48,11 @@ public class SetApiKeyCommand extends Command implements EventListener {
 
         boolean check = main.checkApiKey(apiKey, hotelId, gameClient.getHabbo());
         if (check) {
-            gameClient.getHabbo().whisper("API Key erfolgreich gesetzt!", RoomChatMessageBubbles.ALERT);
             Emulator.getConfig().update("retroliste.apiKey", apiKey);
             Emulator.getConfig().update("retroliste.hotelId", hotelId);
             Emulator.getConfig().saveToDatabase();
+            gameClient.getHabbo().whisper("API Key successfully set. Please disable the cmd_rl_apikey permission.", RoomChatMessageBubbles.ALERT);
+
         }
 
         return true;

@@ -19,6 +19,9 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 
 import java.net.URL;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
 import com.retroliste.plugin.commands.SetMaintenanceCommand;
 import org.apache.http.HttpHeaders;
@@ -44,14 +47,38 @@ public class main extends HabboPlugin implements EventListener {
     }
 
 
+    private boolean registerPermission(String name, String options, String defaultValue, boolean defaultReturn) {
+        try (Connection connection = Emulator.getDatabase().getDataSource().getConnection()) {
+            try (PreparedStatement statement = connection.prepareStatement("ALTER TABLE  `permissions` ADD  `" + name + "` ENUM(  " + options + " ) NOT NULL DEFAULT  '" + defaultValue + "'")) {
+                statement.execute();
+                return true;
+            }
+        } catch (SQLException e) {
+            LOGGER.error(e.toString(), e);
+        }
+
+        return defaultReturn;
+    }
+
     @EventHandler
     public void onEmulatorLoadedEvent(EmulatorLoadedEvent event) throws Exception {
         Emulator.getConfig().register("retroliste.apiKey", "null");
         Emulator.getConfig().register("retroliste.hotelId", "0");
         Emulator.getConfig().register("retroliste.apiEndpoint", "https://retroliste.com/v1/update/");
 
-        CommandHandler.addCommand(new SetMaintenanceCommand("cmd_rl_maintenance", Emulator.getTexts().getValue("rl.maintenance", "maintenance").split(";")));
-        CommandHandler.addCommand(new SetMaintenanceCommand("cmd_rl_apikey", Emulator.getTexts().getValue("rl.apikey", "apikey").split(";")));
+        boolean reloadPermissions = false;
+
+        reloadPermissions = this.registerPermission("cmd_rl_maintenance", "'0', '1'", "0", reloadPermissions);
+        reloadPermissions = this.registerPermission("cmd_rl_apikey", "'0', '1'", "1", reloadPermissions);
+
+
+        if (reloadPermissions) {
+            Emulator.getGameEnvironment().getPermissionsManager().reload();
+        }
+
+
+        CommandHandler.addCommand(new SetMaintenanceCommand("cmd_rl_maintenance", Emulator.getTexts().getValue("rl.maintenance", "rl_maintenance").split(";")));
+        CommandHandler.addCommand(new SetMaintenanceCommand("cmd_rl_apikey", Emulator.getTexts().getValue("rl.apikey", "rl_apikey").split(";")));
 
 
         int onlinecount = Emulator.getGameEnvironment().getHabboManager().getOnlineCount();
@@ -75,7 +102,7 @@ public class main extends HabboPlugin implements EventListener {
         String event = "{\"event\": \"onDisable\", \"onlinecount\": " + onlinecount + "," +
                 "\"activeRooms\": " + activeRooms + ", \"uptime\": " + upTime + "}";
         sendEventToRetroList(event);
-        LOGGER.info("[GameCenter] Good Bye!");
+        LOGGER.info("[RetroListe] Good Bye!");
 
 
     }
@@ -93,6 +120,17 @@ public class main extends HabboPlugin implements EventListener {
         String event = "{\"event\": \"onUserGoOnline\", \"onlinecount\": " + (onlinecount) + "," +
                 "\"activeRooms\": " + activeRooms + ", \"uptime\": " + upTime + "}";
         sendEventToRetroList(event);
+
+        if (e.habbo.getHabboInfo().getRank().getId() > 4) {
+            String key = Emulator.getConfig().getValue("retroliste.apiKey", "null");
+
+            if (key.equals("null"))
+            {
+                e.habbo.alert("Please setup the RetroListe Plugin. Just use the command :rl_apikey YourApiKey to set the key.");
+
+            }
+
+        }
 
     }
 
@@ -130,6 +168,24 @@ public class main extends HabboPlugin implements EventListener {
     }
 
 
+    public static boolean setMaintenanceMode(boolean status) {
+        String key = Emulator.getConfig().getValue("retroliste.apiKey", "null");
+        String hotelId = Emulator.getConfig().getValue("retroliste.hotelId", "0");
+        String apiEndpoint = Emulator.getConfig().getValue("retroliste.apiEndpoint", "https://retroliste.com/v1/update/");
+
+        if (key.equals("null") || hotelId.equals("0"))
+            return false;
+
+
+        try {
+            executePost(apiEndpoint + hotelId, "{\"maintenance\": \"" + status + "\"}", key);
+            return true;
+        } catch (Exception x) {
+            LOGGER.error(x.getMessage());
+        }
+        return false;
+    }
+
     public static boolean checkApiKey(String key, String hotelId, Habbo habbo) {
 
 
@@ -144,7 +200,7 @@ public class main extends HabboPlugin implements EventListener {
             return true;
         } catch (Exception x) {
             LOGGER.error(x.getMessage());
-            habbo.alert("API Key ungültig!\r\n" + x.getMessage());
+            habbo.alert("The API Key is invalid!\r\n" + x.getMessage());
         }
 
         return false;

@@ -9,6 +9,7 @@ import com.eu.habbo.habbohotel.rooms.*;
 import com.eu.habbo.habbohotel.users.Habbo;
 
 import com.eu.habbo.plugin.EventListener;
+import com.retroliste.plugin.main;
 
 
 public class SetMaintenanceCommand extends Command implements EventListener {
@@ -22,10 +23,27 @@ public class SetMaintenanceCommand extends Command implements EventListener {
     @Override
     public boolean handle(GameClient gameClient, String[] strings) throws Exception {
 
+        String currKey = Emulator.getConfig().getValue("retroliste.apiKey", "null");
 
 
-        // API KEY setzen, dann POST Request an die API, dann in DB speichern wenn alles OK ist
+        if (currKey.equals("null")) {
+            gameClient.getHabbo().whisper("Please set the api key with :rl_apikey %apiKey%!", RoomChatMessageBubbles.ALERT);
+            return true;
+        }
 
+
+        boolean newMode = Boolean.parseBoolean(strings[2]);
+
+        boolean status = main.setMaintenanceMode(newMode);
+        if (!status) {
+            gameClient.getHabbo().whisper("An error occurred. Please visit the logs!", RoomChatMessageBubbles.ALERT);
+            return true;
+        }
+
+        if (newMode)
+            gameClient.getHabbo().whisper("Maintenance mode enabled!", RoomChatMessageBubbles.ALERT);
+        else
+            gameClient.getHabbo().whisper("Maintenance mode disabled!", RoomChatMessageBubbles.ALERT);
 
 
         return true;
