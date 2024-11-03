@@ -60,7 +60,7 @@ public class main extends HabboPlugin implements EventListener {
 
     private static final Queue<Map<String, Object>> eventQueue = new ConcurrentLinkedQueue<>();
     private static final int BATCH_SIZE = 50; // Anzahl der Events pro Batch
-    private static final int BATCH_INTERVAL = 60000*5; // Sende alle 5min
+    private static final int BATCH_INTERVAL = 300000; // 5 Minuten in Millisekunden
 
     private ScheduledExecutorService scheduler;
 
@@ -71,7 +71,7 @@ public class main extends HabboPlugin implements EventListener {
 
         // Initialize scheduler for batch processing
         scheduler = Executors.newSingleThreadScheduledExecutor();
-        scheduler.scheduleAtFixedRate(this::processBatch, BATCH_INTERVAL, BATCH_INTERVAL, TimeUnit.MILLISECONDS);
+        scheduler.scheduleAtFixedRate(this::processAndPing, BATCH_INTERVAL, BATCH_INTERVAL, TimeUnit.MILLISECONDS);
 
         if (Emulator.isReady && !Emulator.isShuttingDown) {
             this.onEmulatorLoadedEvent(null);
@@ -129,7 +129,7 @@ public class main extends HabboPlugin implements EventListener {
     @Override
     public void onDisable() throws Exception {
         // Process remaining events before shutdown
-        processBatch();
+        processAndPing();
         scheduler.shutdown();
 
         // Send final shutdown event
@@ -145,8 +145,7 @@ public class main extends HabboPlugin implements EventListener {
         eventData.put("onlinecount", Emulator.getGameEnvironment().getHabboManager().getOnlineCount());
         return eventData;
     }
-
-    private void processBatch() {
+    private void processAndPing() {
         List<Map<String, Object>> batch = new ArrayList<>();
         Map<String, Object> batchData = new HashMap<>();
 
@@ -155,15 +154,25 @@ public class main extends HabboPlugin implements EventListener {
             batch.add(eventQueue.poll());
         }
 
-        if (!batch.isEmpty()) {
-            batchData.put("events", batch);
-            batchData.put("timestamp", System.currentTimeMillis());
-            batchData.put("batchSize", batch.size());
-
-            // Add global stats only once per batch
-            batchData.putAll(createBaseEventData("batchUpdate"));
-            sendEventToRetroList(gson.toJson(batchData));
+        // Wenn keine Events vorhanden sind, erstelle ein onAutoPing Event
+        if (batch.isEmpty()) {
+            Map<String, Object> pingEvent = createBaseEventData("onAutoPing");
+            batch.add(pingEvent);
         }
+
+        // Füge die Batch-Informationen hinzu
+        batchData.put("events", batch);
+        batchData.put("timestamp", System.currentTimeMillis());
+        batchData.put("batchSize", batch.size());
+
+        // Add global stats only once per batch
+        batchData.putAll(createBaseEventData("batchUpdate"));
+
+        // Sende den Batch
+        sendEventToRetroList(gson.toJson(batchData));
+
+        LOGGER.debug("[RetroListe] Sent batch with " + batch.size() + " events" +
+                (batch.size() == 1 && batch.get(0).get("event").equals("onAutoPing") ? " (AutoPing)" : ""));
     }
 
     public void sendEvent(String eventName, Object eventData) {
@@ -176,9 +185,10 @@ public class main extends HabboPlugin implements EventListener {
 
         // Trigger immediate send if queue gets too large
         if (eventQueue.size() >= BATCH_SIZE) {
-            processBatch();
+            processAndPing();
         }
     }
+
 
 
     @Override
@@ -276,9 +286,9 @@ public class main extends HabboPlugin implements EventListener {
         Thread newThread = new Thread(() -> {
             try {
                 String answer = executePost(apiEndpoint + hotelId, e, key);
-                LOGGER.info(answer);
+                //LOGGER.info(answer);
             } catch (Exception x) {
-                LOGGER.error(x.getMessage());
+               // LOGGER.error(x.getMessage());
             }
         });
         newThread.start();
