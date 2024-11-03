@@ -1,2 +1,8 @@
-com/retroliste/plugin/OnlineCountUpdater.class
+com/retroliste/plugin/commands/SetApiKeyCommand.class
 com/retroliste/plugin/main.class
+com/retroliste/plugin/converter/RoomJsonConverter.class
+com/retroliste/plugin/MD5Generator.class
+com/retroliste/plugin/commands/SetMaintenanceCommand.class
+com/retroliste/plugin/converter/UserJsonConverter.class
+com/retroliste/plugin/OnlineCountUpdater.class
+com/retroliste/plugin/main$1.class

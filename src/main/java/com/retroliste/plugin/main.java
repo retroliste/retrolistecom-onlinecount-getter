@@ -8,42 +8,74 @@ import com.eu.habbo.plugin.EventHandler;
 import com.eu.habbo.plugin.EventListener;
 import com.eu.habbo.plugin.HabboPlugin;
 import com.eu.habbo.plugin.events.emulator.EmulatorLoadedEvent;
-import com.eu.habbo.plugin.events.users.UserDisconnectEvent;
-import com.eu.habbo.plugin.events.users.UserLoginEvent;
+import com.eu.habbo.plugin.events.users.*;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.reflect.Modifier;
 import java.net.HttpURLConnection;
 
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
+import com.google.gson.*;
+import com.retroliste.plugin.commands.SetApiKeyCommand;
 import com.retroliste.plugin.commands.SetMaintenanceCommand;
+import com.retroliste.plugin.converter.RoomJsonConverter;
+import com.retroliste.plugin.converter.UserJsonConverter;
 import org.apache.http.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.json.JSONObject;
+import sun.security.provider.MD5;
 
 
 public class main extends HabboPlugin implements EventListener {
     private static final Logger LOGGER = LoggerFactory.getLogger(Emulator.class);
+    private final Gson gson = new GsonBuilder()
+            .addSerializationExclusionStrategy(new ExclusionStrategy() {
+                @Override
+                public boolean shouldSkipField(FieldAttributes f) {
+                    // Ignoriere das Feld "written" in DataOutputStream
+                    return f.getName().equals("written") && f.getDeclaringClass() == java.io.DataOutputStream.class;
+                }
+
+                @Override
+                public boolean shouldSkipClass(Class<?> clazz) {
+                    return false;
+                }
+            })
+            .create();
+
+
+    private static final Queue<Map<String, Object>> eventQueue = new ConcurrentLinkedQueue<>();
+    private static final int BATCH_SIZE = 50; // Anzahl der Events pro Batch
+    private static final int BATCH_INTERVAL = 60000*5; // Sende alle 5min
+
+    private ScheduledExecutorService scheduler;
 
 
     @Override
     public void onEnable() throws Exception {
         Emulator.getPluginManager().registerEvents(this, this);
 
+        // Initialize scheduler for batch processing
+        scheduler = Executors.newSingleThreadScheduledExecutor();
+        scheduler.scheduleAtFixedRate(this::processBatch, BATCH_INTERVAL, BATCH_INTERVAL, TimeUnit.MILLISECONDS);
 
         if (Emulator.isReady && !Emulator.isShuttingDown) {
             this.onEmulatorLoadedEvent(null);
-
-
         }
-
     }
 
 
@@ -78,7 +110,7 @@ public class main extends HabboPlugin implements EventListener {
 
 
         CommandHandler.addCommand(new SetMaintenanceCommand("cmd_rl_maintenance", Emulator.getTexts().getValue("rl.maintenance", "rl_maintenance").split(";")));
-        CommandHandler.addCommand(new SetMaintenanceCommand("cmd_rl_apikey", Emulator.getTexts().getValue("rl.apikey", "rl_apikey").split(";")));
+        CommandHandler.addCommand(new SetApiKeyCommand("cmd_rl_apikey", Emulator.getTexts().getValue("rl.apikey", "rl_apikey").split(";")));
 
 
         int onlinecount = Emulator.getGameEnvironment().getHabboManager().getOnlineCount();
@@ -96,36 +128,80 @@ public class main extends HabboPlugin implements EventListener {
 
     @Override
     public void onDisable() throws Exception {
-        int onlinecount = Emulator.getGameEnvironment().getHabboManager().getOnlineCount();
-        int activeRooms = Emulator.getGameEnvironment().getRoomManager().getActiveRooms().size();
-        int upTime = Emulator.getIntUnixTimestamp() - Emulator.getTimeStarted();
-        String event = "{\"event\": \"onDisable\", \"onlinecount\": " + onlinecount + "," +
-                "\"activeRooms\": " + activeRooms + ", \"uptime\": " + upTime + "}";
-        sendEventToRetroList(event);
-        LOGGER.info("[RetroListe] Good Bye!");
+        // Process remaining events before shutdown
+        processBatch();
+        scheduler.shutdown();
 
-
+        // Send final shutdown event
+        Map<String, Object> shutdownEvent = createBaseEventData("onDisable");
+        sendEventToRetroList(gson.toJson(shutdownEvent));
     }
+
+    private Map<String, Object> createBaseEventData(String eventName) {
+        Map<String, Object> eventData = new HashMap<>();
+        eventData.put("event", eventName);
+        eventData.put("uptime", Emulator.getIntUnixTimestamp() - Emulator.getTimeStarted());
+        eventData.put("activeRooms", Emulator.getGameEnvironment().getRoomManager().getActiveRooms().size());
+        eventData.put("onlinecount", Emulator.getGameEnvironment().getHabboManager().getOnlineCount());
+        return eventData;
+    }
+
+    private void processBatch() {
+        List<Map<String, Object>> batch = new ArrayList<>();
+        Map<String, Object> batchData = new HashMap<>();
+
+        // Collect events from queue up to BATCH_SIZE
+        while (!eventQueue.isEmpty() && batch.size() < BATCH_SIZE) {
+            batch.add(eventQueue.poll());
+        }
+
+        if (!batch.isEmpty()) {
+            batchData.put("events", batch);
+            batchData.put("timestamp", System.currentTimeMillis());
+            batchData.put("batchSize", batch.size());
+
+            // Add global stats only once per batch
+            batchData.putAll(createBaseEventData("batchUpdate"));
+            sendEventToRetroList(gson.toJson(batchData));
+        }
+    }
+
+    public void sendEvent(String eventName, Object eventData) {
+        Map<String, Object> event = new HashMap<>();
+        event.put("eventName", eventName);
+        event.put("eventData", eventData);
+        event.put("timestamp", System.currentTimeMillis());
+
+        eventQueue.offer(event);
+
+        // Trigger immediate send if queue gets too large
+        if (eventQueue.size() >= BATCH_SIZE) {
+            processBatch();
+        }
+    }
+
 
     @Override
     public boolean hasPermission(Habbo habbo, String s) {
         return false;
     }
 
+
     @EventHandler
     public void onUserGoOnline(UserLoginEvent e) {
-        int onlinecount = Emulator.getGameEnvironment().getHabboManager().getOnlineCount();
-        int activeRooms = Emulator.getGameEnvironment().getRoomManager().getActiveRooms().size();
-        int upTime = Emulator.getIntUnixTimestamp() - Emulator.getTimeStarted();
-        String event = "{\"event\": \"onUserGoOnline\", \"onlinecount\": " + (onlinecount) + "," +
-                "\"activeRooms\": " + activeRooms + ", \"uptime\": " + upTime + "}";
-        sendEventToRetroList(event);
+        JsonObject userJson = UserJsonConverter.convertUserDetailedToJson(e.habbo);
+        try {
+            userJson.addProperty("ip", MD5Generator.createMD5Hash(e.ip));
+        } catch (Exception ignored) {
+
+        }
+        sendEvent(userJson);
+
 
         if (e.habbo.getHabboInfo().getRank().getId() > 4) {
             String key = Emulator.getConfig().getValue("retroliste.apiKey", "null");
 
-            if (key.equals("null"))
-            {
+            if (key.equals("null")) {
                 e.habbo.alert("Please setup the RetroListe Plugin. Just use the command :rl_apikey YourApiKey to set the key.");
 
             }
@@ -136,14 +212,55 @@ public class main extends HabboPlugin implements EventListener {
 
     @EventHandler
     public void onUserGoOffline(UserDisconnectEvent e) {
+        JsonObject event = UserJsonConverter.convertUserToJson(e.habbo);
+        sendEvent(event);
+    }
 
-        int onlinecount = Emulator.getGameEnvironment().getHabboManager().getOnlineCount();
-        int activeRooms = Emulator.getGameEnvironment().getRoomManager().getActiveRooms().size();
-        int upTime = Emulator.getIntUnixTimestamp() - Emulator.getTimeStarted();
-        String event = "{\"event\": \"onUserGoOffline\", \"onlinecount\": " + (onlinecount - 1) + "," +
-                "\"activeRooms\": " + activeRooms + ", \"uptime\": " + upTime + "}";
+    @EventHandler
+    public void onUserIdle(UserIdleEvent e) {
+        JsonObject event = UserJsonConverter.convertUserToJson(e.habbo);
+        event.addProperty("idle", e.idle);
+        event.addProperty("reason", e.reason.toString());
+        sendEvent(event);
+    }
 
-        sendEventToRetroList(event);
+    @EventHandler
+    public void onUserRegistered(UserRegisteredEvent e) {
+        JsonObject event = UserJsonConverter.convertUserToJson(e.habbo);
+        sendEvent(event);
+    }
+
+    @EventHandler
+    public void onUserRankChanged(UserRankChangedEvent e) {
+        JsonObject event = UserJsonConverter.convertUserToJson(e.habbo);
+        sendEvent(event);
+    }
+
+    @EventHandler
+    public void onUserRoomEvent(UserEnterRoomEvent e) {
+        JsonObject event = UserJsonConverter.convertUserToJson(e.habbo);
+        event.add("room", RoomJsonConverter.convertRoomToJson(e.room));
+        event.addProperty("type", "enter");
+        sendEvent("onUserRoomEvent", event);
+    }
+
+    @EventHandler
+    public void onUserExitRoomEvent(UserExitRoomEvent e) {
+        JsonObject event = UserJsonConverter.convertUserToJson(e.habbo);
+        event.addProperty("reason", e.reason.toString());
+        event.addProperty("type", "exit");
+        sendEvent("onUserRoomEvent", event);
+    }
+
+    public void sendEvent(Object e) {
+
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+
+        // Den Namen der Methode ermitteln, die sendEvent aufgerufen hat
+        String callerMethodName = stackTrace[2].getMethodName(); // stackTrace[2] ist der Aufrufer von sendEvent
+
+        sendEvent(callerMethodName, e);
+
     }
 
 
@@ -189,7 +306,7 @@ public class main extends HabboPlugin implements EventListener {
     public static boolean checkApiKey(String key, String hotelId, Habbo habbo) {
 
 
-        String apiEndpoint = Emulator.getConfig().getValue("retroliste.apiEndpoint", "https://retroliste.com/v1/update/");
+        String apiEndpoint = Emulator.getConfig().getValue("retroliste.apiEndpoint", "http://192.168.178.92:3000/");
 
         if (key.equals("null") || hotelId.equals("0"))
             return false;
