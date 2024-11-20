@@ -69,9 +69,6 @@ public class main extends HabboPlugin implements EventListener {
     public void onEnable() throws Exception {
         Emulator.getPluginManager().registerEvents(this, this);
 
-        // Initialize scheduler for batch processing
-        scheduler = Executors.newSingleThreadScheduledExecutor();
-        scheduler.scheduleAtFixedRate(this::processAndPing, BATCH_INTERVAL, BATCH_INTERVAL, TimeUnit.MILLISECONDS);
 
         if (Emulator.isReady && !Emulator.isShuttingDown) {
             this.onEmulatorLoadedEvent(null);
@@ -85,8 +82,8 @@ public class main extends HabboPlugin implements EventListener {
                 statement.execute();
                 return true;
             }
-        } catch (SQLException e) {
-            LOGGER.error(e.toString(), e);
+        } catch (SQLException ignored) {
+
         }
 
         return defaultReturn;
@@ -121,7 +118,11 @@ public class main extends HabboPlugin implements EventListener {
         sendEventToRetroList(e);
         LOGGER.info("[RetroListe] LOADED!");
 
-        Emulator.getThreading().run(new OnlineCountUpdater(), 10000);
+       // Emulator.getThreading().run(new OnlineCountUpdater(), 10000);
+
+        // Initialize scheduler for batch processing
+        scheduler = Executors.newSingleThreadScheduledExecutor();
+        scheduler.scheduleAtFixedRate(this::processAndPing, BATCH_INTERVAL, BATCH_INTERVAL, TimeUnit.MILLISECONDS);
 
 
     }
@@ -146,33 +147,39 @@ public class main extends HabboPlugin implements EventListener {
         return eventData;
     }
     private void processAndPing() {
-        List<Map<String, Object>> batch = new ArrayList<>();
-        Map<String, Object> batchData = new HashMap<>();
+        try {
+            List<Map<String, Object>> batch = new ArrayList<>();
+            Map<String, Object> batchData = new HashMap<>();
 
-        // Collect events from queue up to BATCH_SIZE
-        while (!eventQueue.isEmpty() && batch.size() < BATCH_SIZE) {
-            batch.add(eventQueue.poll());
+            // Collect events from queue up to BATCH_SIZE
+            while (!eventQueue.isEmpty() && batch.size() < BATCH_SIZE) {
+                batch.add(eventQueue.poll());
+            }
+
+            // Wenn keine Events vorhanden sind, erstelle ein onAutoPing Event
+            if (batch.isEmpty()) {
+                Map<String, Object> pingEvent = createBaseEventData("onAutoPing");
+                batch.add(pingEvent);
+            }
+
+            // Füge die Batch-Informationen hinzu
+            batchData.put("events", batch);
+            batchData.put("timestamp", System.currentTimeMillis());
+            batchData.put("batchSize", batch.size());
+
+            // Add global stats only once per batch
+            batchData.putAll(createBaseEventData("batchUpdate"));
+
+            // Sende den Batch
+            sendEventToRetroList(gson.toJson(batchData));
+
+            LOGGER.debug("[RetroListe] Sent batch with " + batch.size() + " events" +
+                    (batch.size() == 1 && batch.get(0).get("event").equals("onAutoPing") ? " (AutoPing)" : ""));
         }
+        catch (Exception e) {
+            LOGGER.error("[RetroListe] Failed to send batch", e);
 
-        // Wenn keine Events vorhanden sind, erstelle ein onAutoPing Event
-        if (batch.isEmpty()) {
-            Map<String, Object> pingEvent = createBaseEventData("onAutoPing");
-            batch.add(pingEvent);
         }
-
-        // Füge die Batch-Informationen hinzu
-        batchData.put("events", batch);
-        batchData.put("timestamp", System.currentTimeMillis());
-        batchData.put("batchSize", batch.size());
-
-        // Add global stats only once per batch
-        batchData.putAll(createBaseEventData("batchUpdate"));
-
-        // Sende den Batch
-        sendEventToRetroList(gson.toJson(batchData));
-
-        LOGGER.debug("[RetroListe] Sent batch with " + batch.size() + " events" +
-                (batch.size() == 1 && batch.get(0).get("event").equals("onAutoPing") ? " (AutoPing)" : ""));
     }
 
     public void sendEvent(String eventName, Object eventData) {
@@ -369,7 +376,7 @@ public class main extends HabboPlugin implements EventListener {
             rd.close();
             return response.toString();
         } catch (Exception e) {
-            e.printStackTrace();
+         //   e.printStackTrace();
             return null;
         } finally {
             if (connection != null) {
