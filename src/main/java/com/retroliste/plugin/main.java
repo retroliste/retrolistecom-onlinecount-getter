@@ -22,6 +22,8 @@ import java.net.URL;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
@@ -121,8 +123,14 @@ public class main extends HabboPlugin implements EventListener {
        // Emulator.getThreading().run(new OnlineCountUpdater(), 10000);
 
         // Initialize scheduler for batch processing
-        scheduler = Executors.newSingleThreadScheduledExecutor();
-        scheduler.scheduleAtFixedRate(this::processAndPing, BATCH_INTERVAL, BATCH_INTERVAL, TimeUnit.MILLISECONDS);
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+        ZonedDateTime now = ZonedDateTime.now();
+        ZonedDateTime nextRun = now.withSecond(0).withNano(0);
+        if (now.getMinute() % 5 != 0) {
+            nextRun = nextRun.plusMinutes(5 - (now.getMinute() % 5));
+        }
+        long initialDelay = ChronoUnit.MILLIS.between(now, nextRun);
+        scheduler.scheduleAtFixedRate(this::processAndPing, initialDelay, 5 * 60 * 1000, TimeUnit.MILLISECONDS);
 
 
     }
