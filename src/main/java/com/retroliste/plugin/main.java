@@ -65,7 +65,6 @@ public class main extends HabboPlugin implements EventListener {
     private static final int BATCH_INTERVAL = 300000; // 5 Minuten in Millisekunden
 
 
-
     @Override
     public void onEnable() throws Exception {
         Emulator.getPluginManager().registerEvents(this, this);
@@ -168,6 +167,8 @@ public class main extends HabboPlugin implements EventListener {
             JsonArray rooms = new JsonArray();
 
             for (Room room : Emulator.getGameEnvironment().getRoomManager().getActiveRooms()) {
+                if (room.getUserCount() == 0)
+                    continue;
                 JsonObject userJson = RoomJsonConverter.convertRoomToJson(room);
                 rooms.add(userJson);
             }
