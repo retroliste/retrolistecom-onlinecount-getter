@@ -64,7 +64,6 @@ public class main extends HabboPlugin implements EventListener {
     private static final int BATCH_SIZE = 50; // Anzahl der Events pro Batch
     private static final int BATCH_INTERVAL = 300000; // 5 Minuten in Millisekunden
 
-    private ScheduledExecutorService scheduler;
 
 
     @Override
@@ -142,7 +141,6 @@ public class main extends HabboPlugin implements EventListener {
         sendEventToRetroList(gson.toJson(shutdownEvent));
 
         processAndPing();
-        scheduler.shutdown();
 
         // Send final shutdown event
     }
