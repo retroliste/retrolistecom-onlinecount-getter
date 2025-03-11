@@ -156,6 +156,7 @@ public class main extends HabboPlugin implements EventListener {
         eventData.put("onlinecount", Emulator.getGameEnvironment().getHabboManager().getOnlineCount());
 
 
+        /*
         if (Emulator.getGameEnvironment().getHabboManager().getOnlineCount() > 0) {
             JsonArray users = new JsonArray();
             for (Habbo habbo : Emulator.getGameEnvironment().getHabboManager().getOnlineHabbos().values()) {
@@ -178,6 +179,8 @@ public class main extends HabboPlugin implements EventListener {
             if (rooms.size() > 0)
                 eventData.put("loadedRooms", rooms);
         }
+
+         */
 
 
         return eventData;
