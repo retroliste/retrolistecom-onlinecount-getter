@@ -199,8 +199,8 @@ public class main extends HabboPlugin implements EventListener {
             // Sende den Batch
             sendEventToRetroList(gson.toJson(batchData));
 
-            LOGGER.debug("[RetroListe] Sent batch with " + batch.size() + " events" +
-                    (batch.size() == 1 && batch.get(0).get("event").equals("onAutoPing") ? " (AutoPing)" : ""));
+            LOGGER.debug("[RetroListe] Sent batch with " + batch.size() + " events");
+
         } catch (Exception e) {
             LOGGER.error("[RetroListe] Failed to send batch", e);
 
