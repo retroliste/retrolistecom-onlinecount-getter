@@ -288,6 +288,7 @@ public class main extends HabboPlugin implements EventListener {
 
     public static void sendEventToRetroList(String e) {
 
+        LOGGER.debug(e);
         String key = Emulator.getConfig().getValue("retroliste.apiKey", "null");
         String hotelId = Emulator.getConfig().getValue("retroliste.hotelId", "0");
         String apiEndpoint = Emulator.getConfig().getValue("retroliste.apiEndpoint", "https://retroliste.com/v1/update/");
@@ -298,9 +299,9 @@ public class main extends HabboPlugin implements EventListener {
         Thread newThread = new Thread(() -> {
             try {
                 String answer = executePost(apiEndpoint + hotelId, e, key);
-                //LOGGER.info(answer);
+                LOGGER.info(answer);
             } catch (Exception x) {
-                // LOGGER.error(x.getMessage());
+                 LOGGER.error(x.getMessage());
             }
         });
         newThread.start();
