@@ -162,11 +162,13 @@ public class main extends HabboPlugin implements EventListener {
         }
         eventData.put("onlineUsers", users);
 
+        JsonArray rooms = new JsonArray();
+
         for (Room room : Emulator.getGameEnvironment().getRoomManager().getActiveRooms()) {
             JsonObject userJson = RoomJsonConverter.convertRoomToJson(room);
-            users.add(userJson);
+            rooms.add(userJson);
         }
-        eventData.put("loadedRooms", users);
+        eventData.put("loadedRooms", rooms);
         return eventData;
     }
 
