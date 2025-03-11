@@ -214,6 +214,8 @@ public class main extends HabboPlugin implements EventListener {
         event.addProperty("eventName", eventName);
         event.add("eventData", eventData);
         event.addProperty("timestamp", System.currentTimeMillis());
+        eventData.addProperty("activeRooms", Emulator.getGameEnvironment().getRoomManager().getActiveRooms().size());
+        eventData.addProperty("onlinecount", Emulator.getGameEnvironment().getHabboManager().getOnlineCount());
 
         eventQueue.offer(event);
 
