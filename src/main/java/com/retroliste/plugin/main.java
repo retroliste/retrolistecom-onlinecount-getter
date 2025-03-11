@@ -160,7 +160,9 @@ public class main extends HabboPlugin implements EventListener {
             JsonObject userJson = UserJsonConverter.convertUserToJson(habbo);
             users.add(userJson);
         }
-        eventData.put("onlineUsers", users);
+
+        if (users.size() > 0)
+            eventData.put("onlineUsers", users);
 
         JsonArray rooms = new JsonArray();
 
@@ -168,7 +170,9 @@ public class main extends HabboPlugin implements EventListener {
             JsonObject userJson = RoomJsonConverter.convertRoomToJson(room);
             rooms.add(userJson);
         }
-        eventData.put("loadedRooms", rooms);
+
+        if (rooms.size() > 0)
+            eventData.put("loadedRooms", rooms);
         return eventData;
     }
 
@@ -196,6 +200,7 @@ public class main extends HabboPlugin implements EventListener {
             // Add global stats only once per batch
             batchData.putAll(createBaseEventData("batchUpdate"));
 
+            LOGGER.debug(gson.toJson(batchData));
             // Sende den Batch
             sendEventToRetroList(gson.toJson(batchData));
 
@@ -206,7 +211,6 @@ public class main extends HabboPlugin implements EventListener {
 
         }
     }
-
 
 
     public void sendEvent(String eventName, Object eventData) {

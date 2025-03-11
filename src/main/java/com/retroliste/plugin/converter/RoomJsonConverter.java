@@ -51,9 +51,4 @@ public class RoomJsonConverter {
         return roomJson;
     }
 
-    // Usage example
-    public void handleRoomEvent(RoomEvent e) {
-        JsonObject roomJson = convertRoomToJson(e.room);
-        // Use the JSON object as needed
-    }
 }
