@@ -301,7 +301,7 @@ public class main extends HabboPlugin implements EventListener {
                 String answer = executePost(apiEndpoint + hotelId, e, key);
                 LOGGER.info(answer);
             } catch (Exception x) {
-                 LOGGER.error(x.getMessage());
+                LOGGER.error(x.getMessage());
             }
         });
         newThread.start();
@@ -382,7 +382,7 @@ public class main extends HabboPlugin implements EventListener {
             rd.close();
             return response.toString();
         } catch (Exception e) {
-            //   e.printStackTrace();
+            LOGGER.debug(e.getMessage());
             return null;
         } finally {
             if (connection != null) {
