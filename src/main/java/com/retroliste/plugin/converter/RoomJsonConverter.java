@@ -35,14 +35,6 @@ public class RoomJsonConverter {
             roomJson.addProperty("category", room.getCategory());
             roomJson.addProperty("tags", String.join(",", room.getTags()));
 
-            // Add users list if needed
-            /*
-            JsonArray users = new JsonArray();
-            for (Habbo habbo : room.getHabbos()) {
-                users.add(UserJsonConverter.convertUserSimpleToJson(habbo));
-            }
-            roomJson.add("currentUsers", users);
-            */
 
         } catch (Exception e) {
             throw new RuntimeException("Error creating JSON object for room: " + e.getMessage());

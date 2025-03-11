@@ -155,24 +155,31 @@ public class main extends HabboPlugin implements EventListener {
         eventData.put("activeRooms", Emulator.getGameEnvironment().getRoomManager().getActiveRooms().size());
         eventData.put("onlinecount", Emulator.getGameEnvironment().getHabboManager().getOnlineCount());
 
-        JsonArray users = new JsonArray();
-        for (Habbo habbo : Emulator.getGameEnvironment().getHabboManager().getOnlineHabbos().values()) {
-            JsonObject userJson = UserJsonConverter.convertUserToJson(habbo);
-            users.add(userJson);
+
+        if (Emulator.getGameEnvironment().getHabboManager().getOnlineCount() > 0) {
+            JsonArray users = new JsonArray();
+            for (Habbo habbo : Emulator.getGameEnvironment().getHabboManager().getOnlineHabbos().values()) {
+                JsonObject userJson = UserJsonConverter.convertUserToJson(habbo);
+                users.add(userJson);
+            }
+
+            if (users.size() > 0)
+                eventData.put("onlineUsers", users);
         }
 
-        if (users.size() > 0)
-            eventData.put("onlineUsers", users);
+        if (!Emulator.getGameEnvironment().getRoomManager().getActiveRooms().isEmpty()) {
+            JsonArray rooms = new JsonArray();
 
-        JsonArray rooms = new JsonArray();
+            for (Room room : Emulator.getGameEnvironment().getRoomManager().getActiveRooms()) {
+                JsonObject userJson = RoomJsonConverter.convertRoomToJson(room);
+                rooms.add(userJson);
+            }
 
-        for (Room room : Emulator.getGameEnvironment().getRoomManager().getActiveRooms()) {
-            JsonObject userJson = RoomJsonConverter.convertRoomToJson(room);
-            rooms.add(userJson);
+            if (rooms.size() > 0)
+                eventData.put("loadedRooms", rooms);
         }
 
-        if (rooms.size() > 0)
-            eventData.put("loadedRooms", rooms);
+
         return eventData;
     }
 
@@ -200,7 +207,6 @@ public class main extends HabboPlugin implements EventListener {
             // Add global stats only once per batch
             batchData.putAll(createBaseEventData("batchUpdate"));
 
-            LOGGER.debug(gson.toJson(batchData));
             // Sende den Batch
             sendEventToRetroList(gson.toJson(batchData));
 
@@ -218,9 +224,6 @@ public class main extends HabboPlugin implements EventListener {
         event.put("eventName", eventName);
         event.put("eventData", eventData);
         event.put("timestamp", System.currentTimeMillis());
-        event.put("uptime", Emulator.getIntUnixTimestamp() - Emulator.getTimeStarted());
-        event.put("activeRooms", Emulator.getGameEnvironment().getRoomManager().getActiveRooms().size());
-        event.put("onlinecount", Emulator.getGameEnvironment().getHabboManager().getOnlineCount());
 
         eventQueue.offer(event);
 
