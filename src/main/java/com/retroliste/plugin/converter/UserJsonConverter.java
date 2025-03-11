@@ -33,6 +33,10 @@ public class UserJsonConverter {
             // Additional optional information - add null checks as needed
             if (user.getHabboInfo().getCurrentRoom() != null) {
                 userJson.addProperty("currentRoom", user.getHabboInfo().getCurrentRoom().getId());
+                if (user.getRoomUnit() != null) {
+                    userJson.addProperty("isIdle", user.getRoomUnit().isIdle());
+                    userJson.addProperty("isIdleTimer", user.getRoomUnit().getIdleTimer());
+                }
             }
 
             if (user.getHabboInfo().getRank() != null) {
@@ -65,6 +69,10 @@ public class UserJsonConverter {
             // Additional optional information - add null checks as needed
             if (user.getHabboInfo().getCurrentRoom() != null) {
                 userJson.addProperty("currentRoom", user.getHabboInfo().getCurrentRoom().getId());
+                if (user.getRoomUnit() != null) {
+                    userJson.addProperty("isIdle", user.getRoomUnit().isIdle());
+                    userJson.addProperty("isIdleTimer", user.getRoomUnit().getIdleTimer());
+                }
             }
 
             if (user.getHabboInfo().getRank() != null) {

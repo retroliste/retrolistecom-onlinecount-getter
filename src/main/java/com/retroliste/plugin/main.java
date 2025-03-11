@@ -3,6 +3,8 @@ package com.retroliste.plugin;
 
 import com.eu.habbo.Emulator;
 import com.eu.habbo.habbohotel.commands.CommandHandler;
+import com.eu.habbo.habbohotel.items.Item;
+import com.eu.habbo.habbohotel.rooms.Room;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.plugin.EventHandler;
 import com.eu.habbo.plugin.EventListener;
@@ -120,7 +122,7 @@ public class main extends HabboPlugin implements EventListener {
         sendEventToRetroList(e);
         LOGGER.info("[RetroListe] LOADED!");
 
-       // Emulator.getThreading().run(new OnlineCountUpdater(), 10000);
+        // Emulator.getThreading().run(new OnlineCountUpdater(), 10000);
 
         // Initialize scheduler for batch processing
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -152,8 +154,22 @@ public class main extends HabboPlugin implements EventListener {
         eventData.put("uptime", Emulator.getIntUnixTimestamp() - Emulator.getTimeStarted());
         eventData.put("activeRooms", Emulator.getGameEnvironment().getRoomManager().getActiveRooms().size());
         eventData.put("onlinecount", Emulator.getGameEnvironment().getHabboManager().getOnlineCount());
+
+        JsonArray users = new JsonArray();
+        for (Habbo habbo : Emulator.getGameEnvironment().getHabboManager().getOnlineHabbos().values()) {
+            JsonObject userJson = UserJsonConverter.convertUserToJson(habbo);
+            users.add(userJson);
+        }
+        eventData.put("onlineUsers", users);
+
+        for (Room room : Emulator.getGameEnvironment().getRoomManager().getActiveRooms()) {
+            JsonObject userJson = RoomJsonConverter.convertRoomToJson(room);
+            users.add(userJson);
+        }
+        eventData.put("loadedRooms", users);
         return eventData;
     }
+
     private void processAndPing() {
         try {
             List<Map<String, Object>> batch = new ArrayList<>();
@@ -183,8 +199,7 @@ public class main extends HabboPlugin implements EventListener {
 
             LOGGER.debug("[RetroListe] Sent batch with " + batch.size() + " events" +
                     (batch.size() == 1 && batch.get(0).get("event").equals("onAutoPing") ? " (AutoPing)" : ""));
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             LOGGER.error("[RetroListe] Failed to send batch", e);
 
         }
@@ -195,6 +210,9 @@ public class main extends HabboPlugin implements EventListener {
         event.put("eventName", eventName);
         event.put("eventData", eventData);
         event.put("timestamp", System.currentTimeMillis());
+        event.put("uptime", Emulator.getIntUnixTimestamp() - Emulator.getTimeStarted());
+        event.put("activeRooms", Emulator.getGameEnvironment().getRoomManager().getActiveRooms().size());
+        event.put("onlinecount", Emulator.getGameEnvironment().getHabboManager().getOnlineCount());
 
         eventQueue.offer(event);
 
@@ -203,7 +221,6 @@ public class main extends HabboPlugin implements EventListener {
             processAndPing();
         }
     }
-
 
 
     @Override
@@ -241,40 +258,11 @@ public class main extends HabboPlugin implements EventListener {
         sendEvent(event);
     }
 
-    @EventHandler
-    public void onUserIdle(UserIdleEvent e) {
-        JsonObject event = UserJsonConverter.convertUserToJson(e.habbo);
-        event.addProperty("idle", e.idle);
-        event.addProperty("reason", e.reason.toString());
-        sendEvent(event);
-    }
 
     @EventHandler
     public void onUserRegistered(UserRegisteredEvent e) {
         JsonObject event = UserJsonConverter.convertUserToJson(e.habbo);
         sendEvent(event);
-    }
-
-    @EventHandler
-    public void onUserRankChanged(UserRankChangedEvent e) {
-        JsonObject event = UserJsonConverter.convertUserToJson(e.habbo);
-        sendEvent(event);
-    }
-
-    @EventHandler
-    public void onUserRoomEvent(UserEnterRoomEvent e) {
-        JsonObject event = UserJsonConverter.convertUserToJson(e.habbo);
-        event.add("room", RoomJsonConverter.convertRoomToJson(e.room));
-        event.addProperty("type", "enter");
-        sendEvent("onUserRoomEvent", event);
-    }
-
-    @EventHandler
-    public void onUserExitRoomEvent(UserExitRoomEvent e) {
-        JsonObject event = UserJsonConverter.convertUserToJson(e.habbo);
-        event.addProperty("reason", e.reason.toString());
-        event.addProperty("type", "exit");
-        sendEvent("onUserRoomEvent", event);
     }
 
     public void sendEvent(Object e) {
@@ -303,7 +291,7 @@ public class main extends HabboPlugin implements EventListener {
                 String answer = executePost(apiEndpoint + hotelId, e, key);
                 //LOGGER.info(answer);
             } catch (Exception x) {
-               // LOGGER.error(x.getMessage());
+                // LOGGER.error(x.getMessage());
             }
         });
         newThread.start();
@@ -331,7 +319,7 @@ public class main extends HabboPlugin implements EventListener {
     public static boolean checkApiKey(String key, String hotelId, Habbo habbo) {
 
 
-        String apiEndpoint = Emulator.getConfig().getValue("retroliste.apiEndpoint", "http://192.168.178.92:3000/");
+        String apiEndpoint = Emulator.getConfig().getValue("retroliste.apiEndpoint", "https://retroliste.com/v1/update/");
 
         if (key.equals("null") || hotelId.equals("0"))
             return false;
@@ -384,7 +372,7 @@ public class main extends HabboPlugin implements EventListener {
             rd.close();
             return response.toString();
         } catch (Exception e) {
-         //   e.printStackTrace();
+            //   e.printStackTrace();
             return null;
         } finally {
             if (connection != null) {
