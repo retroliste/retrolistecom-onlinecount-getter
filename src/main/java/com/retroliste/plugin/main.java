@@ -62,7 +62,7 @@ public class main extends HabboPlugin implements EventListener {
             .create();
 
 
-    private static final Queue<Map<String, Object>> eventQueue = new ConcurrentLinkedQueue<>();
+    private static final Queue<JsonObject> eventQueue = new ConcurrentLinkedQueue<>();
     private static final int BATCH_SIZE = 50; // Anzahl der Events pro Batch
     private static final int BATCH_INTERVAL = 300000; // 5 Minuten in Millisekunden
 
@@ -140,23 +140,23 @@ public class main extends HabboPlugin implements EventListener {
     @Override
     public void onDisable() throws Exception {
         // Process remaining events before shutdown
+        JsonObject shutdownEvent = createBaseEventData("onDisable");
+        sendEventToRetroList(gson.toJson(shutdownEvent));
+
         processAndPing();
         scheduler.shutdown();
 
         // Send final shutdown event
-        Map<String, Object> shutdownEvent = createBaseEventData("onDisable");
-        sendEventToRetroList(gson.toJson(shutdownEvent));
     }
 
-    private Map<String, Object> createBaseEventData(String eventName) {
-        Map<String, Object> eventData = new HashMap<>();
-        eventData.put("event", eventName);
-        eventData.put("uptime", Emulator.getIntUnixTimestamp() - Emulator.getTimeStarted());
-        eventData.put("activeRooms", Emulator.getGameEnvironment().getRoomManager().getActiveRooms().size());
-        eventData.put("onlinecount", Emulator.getGameEnvironment().getHabboManager().getOnlineCount());
+    private JsonObject createBaseEventData(String eventName) {
+        JsonObject eventData = new JsonObject();
+        eventData.addProperty("event", eventName);
+        eventData.addProperty("uptime", Emulator.getIntUnixTimestamp() - Emulator.getTimeStarted());
+        eventData.addProperty("activeRooms", Emulator.getGameEnvironment().getRoomManager().getActiveRooms().size());
+        eventData.addProperty("onlinecount", Emulator.getGameEnvironment().getHabboManager().getOnlineCount());
 
 
-        /*
         if (Emulator.getGameEnvironment().getHabboManager().getOnlineCount() > 0) {
             JsonArray users = new JsonArray();
             for (Habbo habbo : Emulator.getGameEnvironment().getHabboManager().getOnlineHabbos().values()) {
@@ -165,7 +165,7 @@ public class main extends HabboPlugin implements EventListener {
             }
 
             if (users.size() > 0)
-                eventData.put("onlineUsers", users);
+                eventData.add("onlineUsers", users);
         }
 
         if (!Emulator.getGameEnvironment().getRoomManager().getActiveRooms().isEmpty()) {
@@ -177,10 +177,8 @@ public class main extends HabboPlugin implements EventListener {
             }
 
             if (rooms.size() > 0)
-                eventData.put("loadedRooms", rooms);
+                eventData.add("loadedRooms", rooms);
         }
-
-         */
 
 
         return eventData;
@@ -188,8 +186,8 @@ public class main extends HabboPlugin implements EventListener {
 
     private void processAndPing() {
         try {
-            List<Map<String, Object>> batch = new ArrayList<>();
-            Map<String, Object> batchData = new HashMap<>();
+            JsonArray batch = new JsonArray();
+            JsonObject batchData = createBaseEventData("batchUpdate").deepCopy();
 
             // Collect events from queue up to BATCH_SIZE
             while (!eventQueue.isEmpty() && batch.size() < BATCH_SIZE) {
@@ -197,23 +195,20 @@ public class main extends HabboPlugin implements EventListener {
             }
 
             // Wenn keine Events vorhanden sind, erstelle ein onAutoPing Event
-            if (batch.isEmpty()) {
-                Map<String, Object> pingEvent = createBaseEventData("onAutoPing");
+            if (batch.size() == 0) {
+                JsonObject pingEvent = createBaseEventData("onAutoPing");
                 batch.add(pingEvent);
             }
 
             // Füge die Batch-Informationen hinzu
-            batchData.put("events", batch);
-            batchData.put("timestamp", System.currentTimeMillis());
-            batchData.put("batchSize", batch.size());
+            batchData.add("events", batch);
+            batchData.addProperty("timestamp", System.currentTimeMillis());
+            batchData.addProperty("batchSize", batch.size());
 
-            // Add global stats only once per batch
-            batchData.putAll(createBaseEventData("batchUpdate"));
 
             // Sende den Batch
             sendEventToRetroList(gson.toJson(batchData));
 
-            LOGGER.debug("[RetroListe] Sent batch with " + batch.size() + " events");
 
         } catch (Exception e) {
             LOGGER.error("[RetroListe] Failed to send batch", e);
@@ -222,11 +217,11 @@ public class main extends HabboPlugin implements EventListener {
     }
 
 
-    public void sendEvent(String eventName, Object eventData) {
-        Map<String, Object> event = new HashMap<>();
-        event.put("eventName", eventName);
-        event.put("eventData", eventData);
-        event.put("timestamp", System.currentTimeMillis());
+    public void sendEvent(String eventName, JsonObject eventData) {
+        JsonObject event = new JsonObject();
+        event.addProperty("eventName", eventName);
+        event.add("eventData", eventData);
+        event.addProperty("timestamp", System.currentTimeMillis());
 
         eventQueue.offer(event);
 
@@ -279,7 +274,7 @@ public class main extends HabboPlugin implements EventListener {
         sendEvent(event);
     }
 
-    public void sendEvent(Object e) {
+    public void sendEvent(JsonObject e) {
 
         StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
 
