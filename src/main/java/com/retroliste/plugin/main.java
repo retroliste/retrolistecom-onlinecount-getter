@@ -12,15 +12,13 @@ import com.eu.habbo.plugin.HabboPlugin;
 import com.eu.habbo.plugin.events.emulator.EmulatorLoadedEvent;
 import com.eu.habbo.plugin.events.users.*;
 
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
+import java.io.*;
 
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.lang.reflect.Modifier;
 import java.net.HttpURLConnection;
 
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -350,39 +348,56 @@ public class main extends HabboPlugin implements EventListener {
         HttpURLConnection connection = null;
 
         try {
-            //Create connection
+            // Create connection
             URL url = new URL(targetURL);
             connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("POST");
-            connection.setRequestProperty("Content-Type",
-                    "application/json");
-            connection.setRequestProperty(HttpHeaders.ACCEPT, "application/json");
-            connection.setRequestProperty(HttpHeaders.AUTHORIZATION, "Bearer " + key);
-            connection.setRequestProperty("Content-Length",
-                    Integer.toString(urlParameters.getBytes().length));
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setRequestProperty("Accept", "application/json");
+            connection.setRequestProperty("Authorization", "Bearer " + key);
+
+            // Verwende UTF-8 für die Kodierung
+            byte[] postData = urlParameters.getBytes(StandardCharsets.UTF_8);
+            connection.setRequestProperty("Content-Length", Integer.toString(postData.length));
 
             connection.setUseCaches(false);
             connection.setDoOutput(true);
 
-            //Send request
-            DataOutputStream wr = new DataOutputStream(
-                    connection.getOutputStream());
-            wr.writeBytes(urlParameters);
-            wr.close();
-
-            //Get Response
-            InputStream is = connection.getInputStream();
-            BufferedReader rd = new BufferedReader(new InputStreamReader(is));
-            StringBuilder response = new StringBuilder(); // or StringBuffer if Java version 5+
-            String line;
-            while ((line = rd.readLine()) != null) {
-                response.append(line);
-                response.append('\r');
+            // Send request
+            try (OutputStream os = connection.getOutputStream()) {
+                os.write(postData);
+                os.flush();
             }
-            rd.close();
-            return response.toString();
+
+            // Prüfe auf HTTP-Fehlercode
+            int responseCode = connection.getResponseCode();
+            if (responseCode >= 400) {
+                try (BufferedReader errorReader = new BufferedReader(
+                        new InputStreamReader(connection.getErrorStream(), StandardCharsets.UTF_8))) {
+                    StringBuilder errorResponse = new StringBuilder();
+                    String line;
+                    while ((line = errorReader.readLine()) != null) {
+                        errorResponse.append(line);
+                        errorResponse.append('\n');
+                    }
+                    LOGGER.error("HTTP-Fehler: " + responseCode + ", Antwort: " + errorResponse);
+                    return null;
+                }
+            }
+
+            // Get Response
+            try (BufferedReader rd = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                StringBuilder response = new StringBuilder();
+                String line;
+                while ((line = rd.readLine()) != null) {
+                    response.append(line);
+                    response.append('\n');
+                }
+                return response.toString();
+            }
         } catch (Exception e) {
-            LOGGER.debug(e.getMessage());
+            LOGGER.error("Fehler bei HTTP-Anfrage: ", e);
             return null;
         } finally {
             if (connection != null) {
