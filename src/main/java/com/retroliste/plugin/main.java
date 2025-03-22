@@ -10,6 +10,7 @@ import com.eu.habbo.plugin.EventHandler;
 import com.eu.habbo.plugin.EventListener;
 import com.eu.habbo.plugin.HabboPlugin;
 import com.eu.habbo.plugin.events.emulator.EmulatorLoadedEvent;
+import com.eu.habbo.plugin.events.support.SupportUserBannedEvent;
 import com.eu.habbo.plugin.events.users.*;
 
 import java.io.*;
@@ -19,6 +20,7 @@ import java.net.HttpURLConnection;
 
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -88,6 +90,23 @@ public class main extends HabboPlugin implements EventListener {
 
         return defaultReturn;
     }
+
+
+    // Log User bans for centralised ban database in the future
+    @EventHandler
+    public void onUserBanned(SupportUserBannedEvent event) throws NoSuchAlgorithmException {
+        JsonObject banObject = new JsonObject();
+        banObject.add("target", UserJsonConverter.convertUserDetailedToJson(event.target));
+        banObject.add("moderator", UserJsonConverter.convertUserSimpleToJson(event.moderator));
+        banObject.addProperty("reason", event.ban.reason);
+        banObject.addProperty("expire", event.ban.expireDate);
+        banObject.addProperty("ip", MD5Generator.createMD5Hash(event.ban.ip));
+        banObject.addProperty("machineId", event.ban.machineId);
+        banObject.addProperty("type", event.ban.type.getType());
+        sendEvent("userBanned", banObject);
+    }
+
+
 
     @EventHandler
     public void onEmulatorLoadedEvent(EmulatorLoadedEvent event) throws Exception {
