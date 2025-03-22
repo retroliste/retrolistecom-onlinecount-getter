@@ -96,7 +96,7 @@ public class main extends HabboPlugin implements EventListener {
     @EventHandler
     public void onUserBanned(SupportUserBannedEvent event) throws NoSuchAlgorithmException {
         JsonObject banObject = new JsonObject();
-        banObject.add("target", UserJsonConverter.convertUserDetailedToJson(event.target));
+        banObject.add("target", UserJsonConverter.convertOfflineUserSimpleToJson(event.ban.userId));
         banObject.add("moderator", UserJsonConverter.convertUserSimpleToJson(event.moderator));
         banObject.addProperty("reason", event.ban.reason);
         banObject.addProperty("expire", event.ban.expireDate);
@@ -105,7 +105,6 @@ public class main extends HabboPlugin implements EventListener {
         banObject.addProperty("type", event.ban.type.getType());
         sendEvent("userBanned", banObject);
     }
-
 
 
     @EventHandler

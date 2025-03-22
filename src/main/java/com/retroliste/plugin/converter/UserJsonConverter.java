@@ -3,8 +3,10 @@ package com.retroliste.plugin.converter;
 import com.eu.habbo.Emulator;
 import com.eu.habbo.habbohotel.achievements.Achievement;
 import com.eu.habbo.habbohotel.users.Habbo;
+import com.eu.habbo.habbohotel.users.HabboInfo;
 import com.eu.habbo.plugin.events.users.UserEvent;
 import com.google.gson.JsonObject;
+import com.retroliste.plugin.MD5Generator;
 
 public class UserJsonConverter {
 
@@ -64,6 +66,8 @@ public class UserJsonConverter {
             userJson.addProperty("userId", user.getHabboInfo().getId());
             userJson.addProperty("userName", user.getHabboInfo().getUsername());
             userJson.addProperty("firstVisit", user.getHabboInfo().firstVisit);
+            userJson.addProperty("ipLogin", MD5Generator.createMD5Hash(user.getHabboInfo().getIpLogin()));
+            userJson.addProperty("ipRegister", MD5Generator.createMD5Hash(user.getHabboInfo().getIpRegister()));
 
 
             // Additional optional information - add null checks as needed
@@ -87,6 +91,37 @@ public class UserJsonConverter {
         return userJson;
     }
 
+
+    public static JsonObject convertOfflineUserSimpleToJson(Integer userId) {
+
+        JsonObject userJson = new JsonObject();
+
+        HabboInfo user = Emulator.getGameEnvironment().getHabboManager().getHabboInfo(userId);
+        try {
+            // Basic user information
+            userJson.addProperty("userId", user.getId());
+            userJson.addProperty("userName", user.getUsername());
+            userJson.addProperty("userName", user.getUsername());
+            userJson.addProperty("machineId", user.getMachineID());
+            userJson.addProperty("ipLogin", MD5Generator.createMD5Hash(user.getIpLogin()));
+            userJson.addProperty("ipRegister", MD5Generator.createMD5Hash(user.getIpRegister()));
+
+            userJson.addProperty("accountCreated", user.getAccountCreated());
+            userJson.addProperty("lastLogin", user.getLastOnline());
+
+            if (user.getRank() != null) {
+                userJson.addProperty("rank", user.getRank().getId());
+            }
+            // Add more properties as needed
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error creating JSON object for user: " + e.getMessage());
+        }
+
+        return userJson;
+
+
+    }
 
     public static JsonObject convertUserSimpleToJson(Habbo user) {
         if (user == null || user.getHabboInfo() == null) {
