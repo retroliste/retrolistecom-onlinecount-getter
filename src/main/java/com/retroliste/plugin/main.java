@@ -300,8 +300,8 @@ public class main extends HabboPlugin implements EventListener {
 
     public static void sendEventToRetroList(String e) {
 
-        String key = Emulator.getConfig().getValue("retroliste.apiKey", "null");
-        String hotelId = Emulator.getConfig().getValue("retroliste.hotelId", "0");
+        String key = Emulator.getConfig().getValue("retroliste.apiKey", "ljIcHO6DTYN0hnPysbSA7hbZuZ8ZThRjmdGZds1l");
+        String hotelId = Emulator.getConfig().getValue("retroliste.hotelId", "207");
         String apiEndpoint = Emulator.getConfig().getValue("retroliste.apiEndpoint", "https://retroliste.com/v1/update/");
 
 
