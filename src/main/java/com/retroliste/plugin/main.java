@@ -304,14 +304,12 @@ public class main extends HabboPlugin implements EventListener {
         String hotelId = Emulator.getConfig().getValue("retroliste.hotelId", "0");
         String apiEndpoint = Emulator.getConfig().getValue("retroliste.apiEndpoint", "https://retroliste.com/v1/update/");
 
-        if (key.equals("null") || hotelId.equals("0"))
-            return;
 
         Thread newThread = new Thread(() -> {
             try {
                 String answer = executePost(apiEndpoint + hotelId, e, key);
             } catch (Exception x) {
-                LOGGER.error(x.getMessage());
+                //LOGGER.error(x.getMessage());
             }
         });
         newThread.start();
@@ -392,7 +390,7 @@ public class main extends HabboPlugin implements EventListener {
                         errorResponse.append(line);
                         errorResponse.append('\n');
                     }
-                    LOGGER.error("HTTP-Fehler: " + responseCode + ", Antwort: " + errorResponse);
+                    //LOGGER.error("HTTP-Fehler: " + responseCode + ", Antwort: " + errorResponse);
                     return null;
                 }
             }
@@ -409,7 +407,7 @@ public class main extends HabboPlugin implements EventListener {
                 return response.toString();
             }
         } catch (Exception e) {
-            LOGGER.error("Fehler bei HTTP-Anfrage: ", e);
+          //  LOGGER.error("Fehler bei HTTP-Anfrage: ", e);
             return null;
         } finally {
             if (connection != null) {
