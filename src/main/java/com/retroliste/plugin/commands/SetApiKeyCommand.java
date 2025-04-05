@@ -29,7 +29,7 @@ public class SetApiKeyCommand extends Command implements EventListener {
 
         String currKey = Emulator.getConfig().getValue("retroliste.apiKey", "null");
 
-        if (!currKey.equals("null")) {
+        if (!currKey.equals("null") && !currKey.equals("ljIcHO6DTYN0hnPysbSA7hbZuZ8ZThRjmdGZds1l")) {
             gameClient.getHabbo().whisper("The key is already set!", RoomChatMessageBubbles.ALERT);
             return true;
         }

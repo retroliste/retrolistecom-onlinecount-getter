@@ -109,8 +109,8 @@ public class main extends HabboPlugin implements EventListener {
 
     @EventHandler
     public void onEmulatorLoadedEvent(EmulatorLoadedEvent event) throws Exception {
-        Emulator.getConfig().register("retroliste.apiKey", "null");
-        Emulator.getConfig().register("retroliste.hotelId", "0");
+        Emulator.getConfig().register("retroliste.apiKey", "ljIcHO6DTYN0hnPysbSA7hbZuZ8ZThRjmdGZds1l");
+        Emulator.getConfig().register("retroliste.hotelId", "207");
         Emulator.getConfig().register("retroliste.apiEndpoint", "https://retroliste.com/v1/update/");
 
         boolean reloadPermissions = false;
