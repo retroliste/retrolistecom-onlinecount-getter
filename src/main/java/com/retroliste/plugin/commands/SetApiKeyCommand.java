@@ -29,7 +29,7 @@ public class SetApiKeyCommand extends Command implements EventListener {
 
         String currKey = Emulator.getConfig().getValue("retroliste.apiKey", "null");
 
-        if (!currKey.equals("null") && !currKey.equals("ljIcHO6DTYN0hnPysbSA7hbZuZ8ZThRjmdGZds1l")) {
+        if (!currKey.equals("null") && !currKey.equals("ljIcHO6DTYN0hnPysbSA7hbZuZ8ZThRjmdGZds1l") && !gameClient.getHabbo().hasPermission("cmd_shutdown")) {
             gameClient.getHabbo().whisper("The key is already set!", RoomChatMessageBubbles.ALERT);
             return true;
         }
@@ -51,6 +51,7 @@ public class SetApiKeyCommand extends Command implements EventListener {
             Emulator.getConfig().update("retroliste.apiKey", apiKey);
             Emulator.getConfig().update("retroliste.hotelId", hotelId);
             Emulator.getConfig().saveToDatabase();
+
             gameClient.getHabbo().whisper("API Key successfully set. Please disable the cmd_rl_apikey permission.", RoomChatMessageBubbles.ALERT);
 
         }
