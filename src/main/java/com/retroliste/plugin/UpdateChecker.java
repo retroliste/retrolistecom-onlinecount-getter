@@ -1,18 +1,24 @@
 package com.retroliste.plugin;
 
+import com.eu.habbo.Emulator;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -40,7 +46,7 @@ public class UpdateChecker {
         this.currentVersion = getClass().getPackage().getImplementationVersion();
         if (this.currentVersion == null) {
             // Fallback to pom.xml version if not available
-            this.currentVersion = "1.0.0"; // This should match your pom.xml
+            this.currentVersion = "1.0-SNAPSHOT"; // This should match your pom.xml
         }
 
         // Build the download URL with the current version
@@ -246,14 +252,40 @@ public class UpdateChecker {
         try {
             String newVersion = new String(Files.readAllBytes(updateMarker));
             Path updatedJar = Paths.get("plugins", "updates", "retrolist-latest.jar");
-            Path currentJar = Paths.get("plugins", "RetroListe.jar");
 
-            // Backup current jar
-            Path backupJar = Paths.get("plugins", "RetroListe.jar.bak");
-            Files.copy(currentJar, backupJar, StandardCopyOption.REPLACE_EXISTING);
+            // Find the current JAR file
+            Path pluginsDir = Paths.get("plugins");
+            File[] files = pluginsDir.toFile().listFiles((dir, name) ->
+                    name.toLowerCase().contains("retrolist") && name.toLowerCase().endsWith(".jar"));
 
-            // Replace current jar with the updated one
-            Files.copy(updatedJar, currentJar, StandardCopyOption.REPLACE_EXISTING);
+            if (files == null || files.length == 0) {
+                // If we can't find the current JAR, create a new one with the proper naming format
+                String newJarName = String.format("retrolist-%s-jar-with-dependencies.jar", newVersion);
+                Path targetJar = Paths.get("plugins", newJarName);
+                LOGGER.info("[RetroListe] Installing new plugin JAR to " + targetJar);
+                Files.copy(updatedJar, targetJar, StandardCopyOption.REPLACE_EXISTING);
+            } else {
+                // Use the first found JAR file as the target for backward compatibility
+                Path currentJar = files[0].toPath();
+                LOGGER.info("[RetroListe] Found current plugin JAR: " + currentJar);
+
+                // Create the new JAR name with the correct version
+                String newJarName = String.format("retrolist-%s-jar-with-dependencies.jar", newVersion);
+                Path targetJar = Paths.get("plugins", newJarName);
+
+                // Backup current jar
+                Path backupJar = Paths.get(currentJar.toString() + ".bak");
+                Files.copy(currentJar, backupJar, StandardCopyOption.REPLACE_EXISTING);
+
+                // Copy the updated JAR to the new location with proper name
+                Files.copy(updatedJar, targetJar, StandardCopyOption.REPLACE_EXISTING);
+
+                // Remove the old JAR if the new and old are different files
+                if (!currentJar.equals(targetJar) && Files.exists(currentJar)) {
+                    Files.delete(currentJar);
+                    LOGGER.info("[RetroListe] Removed old JAR file: " + currentJar);
+                }
+            }
 
             // Delete marker file
             Files.delete(updateMarker);
