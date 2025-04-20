@@ -1,4 +1,5 @@
 com/retroliste/plugin/commands/SetApiKeyCommand.class
+com/retroliste/plugin/UpdateChecker.class
 com/retroliste/plugin/main.class
 com/retroliste/plugin/converter/RoomJsonConverter.class
 com/retroliste/plugin/MD5Generator.class

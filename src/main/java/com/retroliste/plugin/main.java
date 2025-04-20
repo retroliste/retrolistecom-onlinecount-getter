@@ -3,7 +3,6 @@ package com.retroliste.plugin;
 
 import com.eu.habbo.Emulator;
 import com.eu.habbo.habbohotel.commands.CommandHandler;
-import com.eu.habbo.habbohotel.items.Item;
 import com.eu.habbo.habbohotel.rooms.Room;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.plugin.EventHandler;
@@ -11,13 +10,21 @@ import com.eu.habbo.plugin.EventListener;
 import com.eu.habbo.plugin.HabboPlugin;
 import com.eu.habbo.plugin.events.emulator.EmulatorLoadedEvent;
 import com.eu.habbo.plugin.events.support.SupportUserBannedEvent;
-import com.eu.habbo.plugin.events.users.*;
+import com.eu.habbo.plugin.events.users.UserDisconnectEvent;
+import com.eu.habbo.plugin.events.users.UserLoginEvent;
+import com.eu.habbo.plugin.events.users.UserRegisteredEvent;
+import com.google.gson.*;
+import com.retroliste.plugin.commands.SetApiKeyCommand;
+import com.retroliste.plugin.commands.SetMaintenanceCommand;
+import com.retroliste.plugin.converter.RoomJsonConverter;
+import com.retroliste.plugin.converter.UserJsonConverter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.*;
-
-import java.lang.reflect.Modifier;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
-
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
@@ -26,22 +33,11 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
-import com.google.gson.*;
-import com.retroliste.plugin.commands.SetApiKeyCommand;
-import com.retroliste.plugin.commands.SetMaintenanceCommand;
-import com.retroliste.plugin.converter.RoomJsonConverter;
-import com.retroliste.plugin.converter.UserJsonConverter;
-import org.apache.http.HttpHeaders;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.json.JSONObject;
-import sun.security.provider.MD5;
 
 
 public class main extends HabboPlugin implements EventListener {
@@ -66,11 +62,36 @@ public class main extends HabboPlugin implements EventListener {
     private static final int BATCH_SIZE = 50; // Anzahl der Events pro Batch
     private static final int BATCH_INTERVAL = 300000; // 5 Minuten in Millisekunden
 
+    private UpdateChecker updateChecker;
+
+    public UpdateChecker getUpdateChecker() {
+        return this.updateChecker;
+    }
+
 
     @Override
     public void onEnable() throws Exception {
         Emulator.getPluginManager().registerEvents(this, this);
 
+        UpdateChecker.applyPendingUpdate();
+
+
+        this.updateChecker = new UpdateChecker();
+
+        // Schedule update checks (initial check after 1 hour, then every 24 hours)
+        this.updateChecker.scheduleUpdateChecks(1, 24);
+
+
+        // Perform an immediate update check
+        this.updateChecker.checkForUpdates();
+        if (this.updateChecker.isUpdateAvailable()) {
+            LOGGER.info("[RetroListe] Update available! Current version: " + this.updateChecker.getCurrentVersion() +
+                    ", Latest version: " + this.updateChecker.getLatestVersion());
+            LOGGER.info("[RetroListe] Changelog: " + this.updateChecker.getChangeLog());
+
+            // Download update for next restart
+            this.updateChecker.downloadUpdate();
+        }
 
         if (Emulator.isReady && !Emulator.isShuttingDown) {
             this.onEmulatorLoadedEvent(null);
