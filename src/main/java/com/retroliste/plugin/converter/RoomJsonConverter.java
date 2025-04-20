@@ -1,9 +1,6 @@
 package com.retroliste.plugin.converter;
 
 import com.eu.habbo.habbohotel.rooms.Room;
-import com.eu.habbo.habbohotel.users.Habbo;
-import com.eu.habbo.plugin.events.rooms.RoomEvent;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 public class RoomJsonConverter {
