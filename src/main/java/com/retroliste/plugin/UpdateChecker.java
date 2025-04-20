@@ -69,7 +69,7 @@ public class UpdateChecker {
                     JSONObject json = new JSONObject(result);
 
                     String latestCommitSha = json.getString("sha");
-                    this.changelog = json.getJSONObject("commit").getJSONObject("message").toString();
+                    this.changelog = json.getJSONObject("commit").getString("message");
 
                     // Use commit SHA as fallback version
                     latestVersion = latestCommitSha.substring(0, 7); // Short SHA
