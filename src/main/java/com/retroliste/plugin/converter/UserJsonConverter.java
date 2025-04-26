@@ -30,6 +30,8 @@ public class UserJsonConverter {
             userJson.addProperty("lastLogin", user.getHabboInfo().getLastOnline());
             userJson.addProperty("loginStreak", user.getHabboStats().loginStreak);
             userJson.addProperty("onlineTime", user.getHabboStats().getAchievementProgress(onlineTime));
+            userJson.addProperty("ipLogin", MD5Generator.createMD5Hash(user.getHabboInfo().getIpLogin()));
+            userJson.addProperty("ipRegister", MD5Generator.createMD5Hash(user.getHabboInfo().getIpRegister()));
 
 
             // Additional optional information - add null checks as needed
@@ -100,7 +102,6 @@ public class UserJsonConverter {
         try {
             // Basic user information
             userJson.addProperty("userId", user.getId());
-            userJson.addProperty("userName", user.getUsername());
             userJson.addProperty("userName", user.getUsername());
             userJson.addProperty("machineId", user.getMachineID());
             userJson.addProperty("ipLogin", MD5Generator.createMD5Hash(user.getIpLogin()));
