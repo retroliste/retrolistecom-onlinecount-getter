@@ -377,6 +377,11 @@ public class main extends HabboPlugin implements EventListener {
 
     public static String executePost(String targetURL, String urlParameters, String key) {
         HttpURLConnection connection = null;
+        String version = main.class.getPackage().getImplementationVersion();
+        if (version == null) {
+            // Fallback, falls die Version nicht im Manifest definiert ist
+            version = "1.0.0";
+        }
 
         try {
             // Create connection
@@ -385,6 +390,7 @@ public class main extends HabboPlugin implements EventListener {
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type", "application/json");
             connection.setRequestProperty("Accept", "application/json");
+            connection.setRequestProperty("Version", version);
             connection.setRequestProperty("Authorization", "Bearer " + key);
 
             // Verwende UTF-8 für die Kodierung
