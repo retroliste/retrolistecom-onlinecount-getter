@@ -7,7 +7,7 @@ How to use this plugin?
 
 3. Install the plugin like every other plugin and restart the emulator (or update plugins)
 
-(Download it from here: https://git.krews.org/niclas3332/retrolistecom-onlinecount-getter/-/blob/master/target/retrolist-1.0-SNAPSHOT-jar-with-dependencies.jar )
+(Download it from here: https://git.krews.org/niclas3332/retrolistecom-onlinecount-getter/-/blob/master/target/retrolist-1.0.4-jar-with-dependencies.jar )
 
 4. goto your emulator_settings in the database and set it up like:
 
